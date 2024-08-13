@@ -1,0 +1,113 @@
+from psychopy import visual, core, event
+import random
+import pandas as pd
+import time
+import os
+
+# Define stimulus file paths
+stimuli_files = {
+    "bigSsmallS": "C:\\Users\\ghung\\Downloads\\navon task\\bigSsmallS.png",
+    "bigSsmallH": "C:\\Users\\ghung\\Downloads\\navon task\\bigSsmallH.png",
+    "bigHsmallS": "C:\\Users\\ghung\\Downloads\\navon task\\bigHsmallS.png",
+    "bigHsmallH": "C:\\Users\\ghung\\Downloads\\navon task\\bigHsmallH.png"
+}
+
+# Number of trials for each stimulus
+stimulus_counts = {
+    "bigSsmallS": 10,
+    "bigSsmallH": 10,
+    "bigHsmallS": 10,
+    "bigHsmallH": 10
+}
+
+# Define congruence
+congruence_map = {
+    "bigSsmallS": "congruent",
+    "bigSsmallH": "incongruent",
+    "bigHsmallS": "incongruent",
+    "bigHsmallH": "congruent"
+}
+
+# Set up the experiment
+win = visual.Window([800, 600], color='black', units='pix')
+
+# List to collect trial data
+data = []
+
+def present_stimuli(win, stimuli_files, stimulus_counts):
+    # Create stimulus list
+    all_trials = []
+    for stimulus_name, count in stimulus_counts.items():
+        all_trials.extend([stimulus_name] * count)
+    
+    # Randomize the order of trials
+    random.shuffle(all_trials)
+    
+    # Prepare stimuli
+    stimuli = {name: visual.ImageStim(win, image=file) for name, file in stimuli_files.items()}
+    
+    # Loop through trials
+    for trial_number, trial in enumerate(all_trials, start=1):
+        stimulus = stimuli[trial]
+        
+        # Show stimulus
+        stimulus.draw()
+        win.flip()
+        
+        # Wait for a response or a fixed time
+        start_time = time.time()  # Record the start time
+        keys = event.waitKeys(keyList=['s', 'h', 'escape'], maxWait=2.0)
+        response_time = time.time() - start_time  # Calculate the response time
+        
+        # Check for escape key or timeout
+        if keys:
+            if 'escape' in keys:
+                print("Escape key pressed. Exiting.")
+                core.quit()
+            response = keys[0]
+        else:
+            response = 'None'
+        
+        # Determine Global/Local based on response
+        if trial in ["bigSsmallS", "bigSsmallH"]:
+            if response == 'h':
+                global_local = 'local'
+            else:
+                global_local = 'global'
+        elif trial in ["bigHsmallS", "bigHsmallH"]:
+            if response == 's':
+                global_local = 'local'
+            else:
+                global_local = 'global'
+        
+        # Record the trial data
+        data.append({
+            'Trial': trial_number,
+            'StimFile': trial,
+            'Congruence': congruence_map[trial],
+            'Global/Local': global_local,
+            'Response': response,
+            'ResponseTime': response_time
+        })
+        
+        # Clear the screen
+        win.flip()
+        core.wait(1.0)  # Inter-trial interval
+
+# Run the experiment
+present_stimuli(win, stimuli_files, stimulus_counts)
+
+# Close the window
+win.close()
+core.quit()
+
+# Save data to Excel
+output_path = "C:\\Users\\ghung\\Downloads\\navon task\\experiment_results.xlsx"
+df = pd.DataFrame(data)
+df.to_excel(output_path, index=False, engine='openpyxl')
+
+# Debug message to confirm saving
+if os.path.exists(output_path):
+    print(f"Data successfully saved to {output_path}")
+else:
+    print(f"Failed to save data to {output_path}")
