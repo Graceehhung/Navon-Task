@@ -1,0 +1,128 @@
+from psychopy import visual, event, core, logging, data, gui
+import os
+import pandas as pd
+import time
+import random
+
+# General Settings
+expName = 'Navon Task'
+expInfo = {'participant': '', 'session': '001'}
+dlg = gui.DlgFromDict(dictionary=expInfo, title=expName)
+if dlg.OK == False:
+    core.quit()  # user pressed cancel
+expInfo['date'] = data.getDateStr()  # add a simple timestamp
+expInfo['expName'] = expName
+
+# Data saving location
+data_folder = os.path.join(os.getcwd(), 'data')
+os.makedirs(data_folder, exist_ok=True)
+filename = os.path.join(data_folder, f"{expInfo['participant']}_{expInfo['date']}")
+
+# Set up the experiment handler to save data
+thisExp = data.ExperimentHandler(name=expName, version='',
+    extraInfo=expInfo, runtimeInfo=None,
+    originPath=None,
+    savePickle=True, saveWideText=True,
+    dataFileName=filename)
+
+# Set up the window
+win = visual.Window(size=[1024, 768], fullscr=True, screen=0, winType='pyglet',
+                    allowGUI=False, allowStencil=False, monitor='testMonitor', 
+                    color=[-1, -1, -1], colorSpace='rgb', blendMode='avg', 
+                    useFBO=True)
+
+# Set logging level
+logging.console.setLevel(logging.WARNING)
+
+# Escape key setup
+endExpNow = False
+win.mouseVisible = False
+
+# Routines and Components
+
+# Fixation cross routine
+def fixationCrossRoutine():
+    fixate = visual.TextStim(win, text='+', color='white', pos=(0, 0))
+    fixate.draw()
+    win.flip()
+    core.wait(1.0)  # Duration of 1 second
+
+# Stimulus routine
+def stimulusRoutine(stimulus_image):
+    stimulus = visual.ImageStim(win, image=stimulus_image, 
+                                color='white', pos=(0, 0), 
+                                flipHoriz=False, flipVert=False)
+    stimulus.draw()
+    win.flip()
+    
+    start_time = time.time()  # Start timing for response
+    response = event.waitKeys(keyList=['s', 'h', 'escape'])  # Wait for key press response
+    response_time = time.time() - start_time  # Calculate response time
+
+    if 'escape' in response:
+        core.quit()
+    return response[0], response_time
+
+# Stimuli list with full paths
+stimuli_list = [
+    r"C:\Users\ghung\Downloads\navon task\bigSsmallS.png",
+    r"C:\Users\ghung\Downloads\navon task\bigSsmallH.png",
+    r"C:\Users\ghung\Downloads\navon task\bigHsmallS.png",
+    r"C:\Users\ghung\Downloads\navon task\bigHsmallH.png"
+]
+
+# Duplicate and randomize trials
+stimuli_list *= 10  # Create 10 repetitions of each stimulus
+random.shuffle(stimuli_list)  # Shuffle the entire list to randomize trial order
+
+# Congruence mapping
+congruence_map = {
+    "bigSsmallS": "congruent",
+    "bigSsmallH": "incongruent",
+    "bigHsmallS": "incongruent",
+    "bigHsmallH": "congruent"
+}
+
+# Collect responses
+responses = []
+
+# Trial loop
+for trial_number, stimulus_image in enumerate(stimuli_list, start=1):
+    fixationCrossRoutine()
+    response, response_time = stimulusRoutine(stimulus_image)
+    
+    # Determine Global/Local based on the stimulus and response
+    stimulus_name = os.path.basename(stimulus_image).split('.')[0]
+    if stimulus_name in ["bigSsmallS", "bigSsmallH"]:
+        global_local = 'local' if response == 'h' else 'global'
+    elif stimulus_name in ["bigHsmallS", "bigHsmallH"]:
+        global_local = 'local' if response == 's' else 'global'
+    
+    # Record the trial data with the additional information
+    responses.append({
+        'Trial': trial_number,
+        'Stimulus': stimulus_name,
+        'Congruence': congruence_map[stimulus_name],
+        'Global/Local': global_local,
+        'Response': response,
+        'ResponseTime': response_time
+    })
+
+# Convert responses to DataFrame
+df = pd.DataFrame(responses)
+
+# Save data to CSV and Excel
+csv_file = filename + '.csv'
+excel_file = filename + '.xlsx'
+df.to_csv(csv_file, index=False)
+df.to_excel(excel_file, index=False, engine='openpyxl')
+
+# Save data to the experiment handler
+thisExp.saveAsWideText(csv_file)
+thisExp.saveAsPickle(filename)
+logging.flush()
+thisExp.abort()  # or data files will save again on exit
+
+# Close the window
+win.close()
+core.quit()
